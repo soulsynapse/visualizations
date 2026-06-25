@@ -436,7 +436,7 @@
   <header>
     <div>
       <h1>Bead on a Rotating Hoop</h1>
-      <p class="subtitle">A fixed-camera view of a bead on a vertical hoop, with the rotating-frame potential and the supercritical branch that appears past the critical spin.</p>
+      <p class="subtitle">A bead on a vertical rotating hoop, with a switch between a lab-fixed camera and the hoop-fixed rotating frame where the effective potential is easiest to read.</p>
     </div>
     <div class="top-readouts" aria-label="Current simulation values">
       <span class="pill" id="phasePill"><span>state</span><strong>subcritical</strong></span>
@@ -448,11 +448,11 @@
   <main>
     <section class="panel scene-panel">
       <div class="panel-head">
-        <h2>Fixed Frame</h2>
+        <h2 id="sceneTitle">Fixed Camera</h2>
         <div class="meta" id="sceneMeta">hoop rotates about the vertical axis</div>
       </div>
       <div class="canvas-wrap">
-        <canvas id="sceneCanvas" aria-label="Fixed-frame rotating hoop simulation"></canvas>
+        <canvas id="sceneCanvas" aria-label="Rotating hoop simulation with selectable view mode"></canvas>
       </div>
       <div class="metrics" aria-label="Simulation metrics">
         <div class="metric">
@@ -511,6 +511,13 @@
           <button id="resetButton" type="button">Reset</button>
         </div>
 
+        <div class="control">
+          <span class="control-title">Scene view</span>
+          <div class="segmented" role="group" aria-label="Scene view mode">
+            <button id="fixedCameraView" type="button" aria-pressed="true">Fixed camera</button>
+            <button id="fixedFrameView" type="button" aria-pressed="false">Hoop-fixed frame</button>
+          </div>
+        </div>
         <div class="control">
           <span class="control-title">Stable side</span>
           <div class="segmented" role="group" aria-label="Stable side selection">
@@ -578,6 +585,8 @@
     const settleButton = document.getElementById('settleButton');
     const nudgeButton = document.getElementById('nudgeButton');
     const resetButton = document.getElementById('resetButton');
+    const fixedCameraView = document.getElementById('fixedCameraView');
+    const fixedFrameView = document.getElementById('fixedFrameView');
     const positiveBranch = document.getElementById('positiveBranch');
     const negativeBranch = document.getElementById('negativeBranch');
     const mirrorToggle = document.getElementById('mirrorToggle');
@@ -589,6 +598,7 @@
     const heightMetric = document.getElementById('heightMetric');
     const radiusMetric = document.getElementById('radiusMetric');
     const sceneMeta = document.getElementById('sceneMeta');
+    const sceneTitle = document.getElementById('sceneTitle');
 
     const colors = {
       ink: '#172126',
@@ -611,6 +621,7 @@
       sweep: false,
       sweepDirection: 1,
       branchSign: 1,
+      viewMode: 'camera',
       showMirror: true,
       theta: 0.035,
       thetaDot: 0,
@@ -779,7 +790,8 @@
       const project = makeProjector(width, height);
       const thetaEq = equilibriumAngle(state.lambda);
       const actualTheta = state.theta;
-      const phase = state.phase;
+      const phase = state.viewMode === 'frame' ? 0 : state.phase;
+      const viewLabel = state.viewMode === 'frame' ? 'hoop-fixed frame' : 'fixed camera';
 
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
       gradient.addColorStop(0, '#f9fbfc');
@@ -800,7 +812,13 @@
       drawLine(ctx, floorPoints, 'rgba(64, 83, 92, 0.16)', 1.4, [5, 7]);
 
       if (state.trail.length > 1) {
-        const trailPoints = state.trail.map((point) => project(point));
+        const trailPoints = state.trail.map((point) => {
+          if (point.theta === undefined) {
+            return project(point);
+          }
+          const trailPhase = state.viewMode === 'frame' ? 0 : point.phase;
+          return project(worldPoint(point.theta, trailPhase));
+        });
         for (let i = 1; i < trailPoints.length; i += 1) {
           const alpha = i / trailPoints.length;
           drawLine(ctx, [trailPoints[i - 1], trailPoints[i]], `rgba(47, 111, 189, ${0.08 + alpha * 0.26})`, 2.4);
@@ -875,6 +893,7 @@
       });
       drawText(ctx, `theta* = ${signedAngleLabel(eqTheta)}`, 18, 44, { fill: colors.green });
       drawText(ctx, `lambda = ${state.lambda.toFixed(2)}`, 18, 64, { fill: colors.teal });
+      drawText(ctx, `view = ${viewLabel}`, 18, 84, { fill: colors.axis });
     }
 
     function drawPlotFrame(ctx, width, height, margins, xLabel, yLabel) {
@@ -1146,7 +1165,7 @@
         state.phase %= Math.PI * 2;
       }
 
-      state.trail.push(worldPoint(state.theta, state.phase));
+      state.trail.push({ theta: state.theta, phase: state.phase });
       if (state.trail.length > 160) {
         state.trail.splice(0, state.trail.length - 160);
       }
@@ -1169,17 +1188,24 @@
       heightMetric.textContent = (-Math.cos(state.theta)).toFixed(2);
       radiusMetric.textContent = Math.abs(Math.sin(state.theta)).toFixed(2);
       thetaStarTop.textContent = signedAngleLabel(signedEq);
-      sceneMeta.textContent = state.lambda < 1
+      sceneTitle.textContent = state.viewMode === 'frame' ? 'Hoop-Fixed Frame' : 'Fixed Camera';
+      const viewPrefix = state.viewMode === 'frame'
+        ? 'rotating frame: hoop is held still'
+        : 'lab view: camera is fixed';
+      let dynamicsText = state.lambda < 1
         ? 'bottom equilibrium is stable'
         : 'bottom equilibrium is unstable';
 
       const nearLimit = state.lambda > 2.8 ? ', approaching 90 degrees' : '';
       if (state.lambda > 1) {
-        sceneMeta.textContent = `side wells at +/- ${deg(thetaEq).toFixed(1)} deg${nearLimit}`;
+        dynamicsText = `side wells at +/- ${deg(thetaEq).toFixed(1)} deg${nearLimit}`;
       }
+      sceneMeta.textContent = `${viewPrefix}; ${dynamicsText}`;
 
       positiveBranch.setAttribute('aria-pressed', String(state.branchSign > 0));
       negativeBranch.setAttribute('aria-pressed', String(state.branchSign < 0));
+      fixedCameraView.setAttribute('aria-pressed', String(state.viewMode === 'camera'));
+      fixedFrameView.setAttribute('aria-pressed', String(state.viewMode === 'frame'));
       sweepButton.setAttribute('aria-pressed', String(state.sweep));
       sweepButton.textContent = state.sweep ? 'Stop sweep' : 'Start sweep';
 
@@ -1238,6 +1264,13 @@
       state.trail = [];
     });
 
+    fixedCameraView.addEventListener('click', () => {
+      state.viewMode = 'camera';
+    });
+
+    fixedFrameView.addEventListener('click', () => {
+      state.viewMode = 'frame';
+    });
     positiveBranch.addEventListener('click', () => {
       if (state.branchSign < 0) {
         state.theta = -state.theta;
