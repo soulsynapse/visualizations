@@ -4,6 +4,10 @@ Standalone, dynamic visualizations written as plain HTML files with embedded Jav
 
 This repository is intended to be simple to publish with GitHub Pages: every visualization should be a browser-ready `.html` file that can be opened directly or linked from a static index page.
 
+## Visualizations
+
+- [Bead on a rotating hoop](simulations/rotating-hoop-bead.html)
+
 ## Goals
 
 - Keep every visualization dynamic and interactive.
@@ -21,10 +25,6 @@ This repository is intended to be simple to publish with GitHub Pages: every vis
 ```
 
 Place new visualizations in `simulations/` unless another top-level category becomes useful later.
-
-## Visualizations
-
-- [Bead on a rotating hoop](simulations/rotating-hoop-bead.html)
 
 ## Adding A Visualization
 
