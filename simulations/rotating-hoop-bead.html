@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bead on a Rotating Hoop</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f6f7;
+      --panel: #ffffff;
+      --ink: #172126;
+      --muted: #5f6f78;
+      --line: #d8e0e4;
+      --axis: #40535c;
+      --teal: #087f8c;
+      --green: #2f8f5b;
+      --orange: #d97706;
+      --red: #c2414b;
+      --blue: #2f6fbd;
+      --shadow: 0 18px 46px rgba(23, 33, 38, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px clamp(16px, 3vw, 34px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(14px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(1.18rem, 2vw, 1.78rem);
+      line-height: 1.1;
+      font-weight: 760;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.94rem;
+      line-height: 1.45;
+      max-width: 68ch;
+    }
+
+    .top-readouts {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: min(460px, 100%);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .pill strong {
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 760;
+    }
+
+    .pill.critical {
+      border-color: rgba(217, 119, 6, 0.38);
+      background: #fff7ed;
+      color: #8a4b05;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(420px, 1.28fr) minmax(320px, 0.72fr);
+      grid-template-areas:
+        "scene controls"
+        "branches potential"
+        "balance balance";
+      gap: 16px;
+      width: min(1460px, calc(100% - 32px));
+      margin: 16px auto 26px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .scene-panel {
+      grid-area: scene;
+      min-width: 0;
+    }
+
+    .controls-panel {
+      grid-area: controls;
+      min-width: 0;
+    }
+
+    .branches-panel {
+      grid-area: branches;
+      min-width: 0;
+    }
+
+    .potential-panel {
+      grid-area: potential;
+      min-width: 0;
+    }
+
+    .balance-panel {
+      grid-area: balance;
+      min-width: 0;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head h2 {
+      font-size: 0.96rem;
+      font-weight: 760;
+    }
+
+    .panel-head .meta {
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 410px;
+      height: min(56vh, 610px);
+      background:
+        linear-gradient(180deg, rgba(8, 127, 140, 0.08), rgba(47, 111, 189, 0.02) 42%, rgba(217, 119, 6, 0.04)),
+        #fbfcfd;
+    }
+
+    .canvas-wrap canvas,
+    .graph-wrap canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+    }
+
+    .metric {
+      padding: 12px 14px;
+      border-right: 1px solid var(--line);
+      min-width: 0;
+    }
+
+    .metric:last-child {
+      border-right: 0;
+    }
+
+    .metric .label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.74rem;
+      line-height: 1.2;
+      margin-bottom: 5px;
+    }
+
+    .metric .value {
+      color: var(--ink);
+      font-size: clamp(1rem, 2vw, 1.34rem);
+      line-height: 1.1;
+      font-weight: 780;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .controls {
+      padding: 14px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    label,
+    .control-title {
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 720;
+    }
+
+    output {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .button-row,
+    .segmented {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 8px 11px;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 720;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(8, 127, 140, 0.42);
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid rgba(8, 127, 140, 0.24);
+      outline-offset: 2px;
+    }
+
+    button.primary,
+    button[aria-pressed="true"] {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #fff;
+    }
+
+    button.warn {
+      color: #8a4b05;
+      border-color: rgba(217, 119, 6, 0.35);
+      background: #fffaf2;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 680;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--teal);
+    }
+
+    .equation {
+      display: grid;
+      gap: 8px;
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .equation code {
+      display: block;
+      padding: 10px 11px;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: #f8fafb;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      white-space: normal;
+    }
+
+    .graph-wrap {
+      height: 315px;
+      background: #fbfcfd;
+    }
+
+    .balance-panel .graph-wrap {
+      height: 350px;
+    }
+
+    @media (max-width: 980px) {
+      header {
+        position: static;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .top-readouts {
+        justify-content: flex-start;
+        min-width: 0;
+      }
+
+      main {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          "scene"
+          "controls"
+          "branches"
+          "potential"
+          "balance";
+        width: min(100% - 20px, 760px);
+        margin-top: 10px;
+      }
+
+      .canvas-wrap {
+        min-height: 360px;
+        height: 58vh;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric:nth-child(2) {
+        border-right: 0;
+      }
+
+      .metric:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 520px) {
+      main {
+        width: calc(100% - 14px);
+      }
+
+      .panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .panel-head .meta {
+        text-align: left;
+      }
+
+      .canvas-wrap {
+        min-height: 320px;
+      }
+
+      .metrics {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .metric,
+      .metric:nth-child(2) {
+        border-right: 0;
+      }
+
+      .metric {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .metric:last-child {
+        border-bottom: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Bead on a Rotating Hoop</h1>
+      <p class="subtitle">A fixed-camera view of a bead on a vertical hoop, with the rotating-frame potential and the supercritical branch that appears past the critical spin.</p>
+    </div>
+    <div class="top-readouts" aria-label="Current simulation values">
+      <span class="pill" id="phasePill"><span>state</span><strong>subcritical</strong></span>
+      <span class="pill"><span>critical</span><strong>&lambda; = 1</strong></span>
+      <span class="pill"><span>stable &theta;*</span><strong id="thetaStarTop">0.0 deg</strong></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel scene-panel">
+      <div class="panel-head">
+        <h2>Fixed Frame</h2>
+        <div class="meta" id="sceneMeta">hoop rotates about the vertical axis</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="sceneCanvas" aria-label="Fixed-frame rotating hoop simulation"></canvas>
+      </div>
+      <div class="metrics" aria-label="Simulation metrics">
+        <div class="metric">
+          <span class="label">spin ratio</span>
+          <span class="value" id="lambdaMetric">0.70</span>
+        </div>
+        <div class="metric">
+          <span class="label">bead angle</span>
+          <span class="value" id="thetaMetric">0.0 deg</span>
+        </div>
+        <div class="metric">
+          <span class="label">height z / R</span>
+          <span class="value" id="heightMetric">-1.00</span>
+        </div>
+        <div class="metric">
+          <span class="label">radius r / R</span>
+          <span class="value" id="radiusMetric">0.00</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel controls-panel">
+      <div class="panel-head">
+        <h2>Controls</h2>
+        <div class="meta">dimensionless speed &lambda; = &Omega; / sqrt(g / R)</div>
+      </div>
+      <div class="controls">
+        <div class="control">
+          <div class="control-row">
+            <label for="lambdaSlider">Spin speed</label>
+            <output id="lambdaOut" for="lambdaSlider">0.70</output>
+          </div>
+          <input id="lambdaSlider" type="range" min="0" max="4" step="0.01" value="0.70">
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="dampingSlider">Damping</label>
+            <output id="dampingOut" for="dampingSlider">0.78</output>
+          </div>
+          <input id="dampingSlider" type="range" min="0" max="2.5" step="0.01" value="0.78">
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="sweepSlider">Sweep rate</label>
+            <output id="sweepOut" for="sweepSlider">0.28</output>
+          </div>
+          <input id="sweepSlider" type="range" min="0.04" max="1.2" step="0.01" value="0.28">
+        </div>
+
+        <div class="button-row">
+          <button id="sweepButton" class="primary" type="button" aria-pressed="false">Start sweep</button>
+          <button id="settleButton" type="button">Settle</button>
+          <button id="nudgeButton" class="warn" type="button">Nudge</button>
+          <button id="resetButton" type="button">Reset</button>
+        </div>
+
+        <div class="control">
+          <span class="control-title">Stable side</span>
+          <div class="segmented" role="group" aria-label="Stable side selection">
+            <button id="positiveBranch" type="button" aria-pressed="true">+ side</button>
+            <button id="negativeBranch" type="button" aria-pressed="false">- side</button>
+          </div>
+        </div>
+
+        <label class="check-row">
+          <input id="mirrorToggle" type="checkbox" checked>
+          mirror branch
+        </label>
+      </div>
+      <div class="equation">
+        <code>theta'' = sin(theta) * (lambda^2 * cos(theta) - 1) - damping * theta'</code>
+        <code>nonzero equilibrium: cos(theta*) = 1 / lambda^2</code>
+      </div>
+    </aside>
+
+    <section class="panel branches-panel">
+      <div class="panel-head">
+        <h2>Equilibrium Branches</h2>
+        <div class="meta">bottom loses stability at &lambda; = 1</div>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="branchCanvas" aria-label="Equilibrium angle graph"></canvas>
+      </div>
+    </section>
+
+    <section class="panel potential-panel">
+      <div class="panel-head">
+        <h2>Effective Potential</h2>
+        <div class="meta">U / mgR = 1 - cos(theta) - 0.5 lambda^2 sin^2(theta)</div>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="potentialCanvas" aria-label="Effective potential graph"></canvas>
+      </div>
+    </section>
+
+    <section class="panel balance-panel">
+      <div class="panel-head">
+        <h2>Balance Toward 90 Degrees</h2>
+        <div class="meta">as lambda grows, 1 / lambda^2 moves toward zero</div>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="balanceCanvas" aria-label="Balance condition graph"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const sceneCanvas = document.getElementById('sceneCanvas');
+    const branchCanvas = document.getElementById('branchCanvas');
+    const potentialCanvas = document.getElementById('potentialCanvas');
+    const balanceCanvas = document.getElementById('balanceCanvas');
+
+    const lambdaSlider = document.getElementById('lambdaSlider');
+    const dampingSlider = document.getElementById('dampingSlider');
+    const sweepSlider = document.getElementById('sweepSlider');
+    const lambdaOut = document.getElementById('lambdaOut');
+    const dampingOut = document.getElementById('dampingOut');
+    const sweepOut = document.getElementById('sweepOut');
+
+    const sweepButton = document.getElementById('sweepButton');
+    const settleButton = document.getElementById('settleButton');
+    const nudgeButton = document.getElementById('nudgeButton');
+    const resetButton = document.getElementById('resetButton');
+    const positiveBranch = document.getElementById('positiveBranch');
+    const negativeBranch = document.getElementById('negativeBranch');
+    const mirrorToggle = document.getElementById('mirrorToggle');
+
+    const phasePill = document.getElementById('phasePill');
+    const thetaStarTop = document.getElementById('thetaStarTop');
+    const lambdaMetric = document.getElementById('lambdaMetric');
+    const thetaMetric = document.getElementById('thetaMetric');
+    const heightMetric = document.getElementById('heightMetric');
+    const radiusMetric = document.getElementById('radiusMetric');
+    const sceneMeta = document.getElementById('sceneMeta');
+
+    const colors = {
+      ink: '#172126',
+      muted: '#5f6f78',
+      line: '#d8e0e4',
+      grid: '#e8eef1',
+      axis: '#40535c',
+      teal: '#087f8c',
+      green: '#2f8f5b',
+      orange: '#d97706',
+      red: '#c2414b',
+      blue: '#2f6fbd',
+      panel: '#ffffff'
+    };
+
+    const state = {
+      lambda: Number(lambdaSlider.value),
+      damping: Number(dampingSlider.value),
+      sweepRate: Number(sweepSlider.value),
+      sweep: false,
+      sweepDirection: 1,
+      branchSign: 1,
+      showMirror: true,
+      theta: 0.035,
+      thetaDot: 0,
+      phase: 0,
+      trail: [],
+      lastTime: performance.now()
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function equilibriumAngle(lambda) {
+      if (lambda <= 1) {
+        return 0;
+      }
+      return Math.acos(1 / (lambda * lambda));
+    }
+
+    function potential(theta, lambda) {
+      const sin = Math.sin(theta);
+      return 1 - Math.cos(theta) - 0.5 * lambda * lambda * sin * sin;
+    }
+
+    function deg(rad) {
+      return rad * 180 / Math.PI;
+    }
+
+    function rad(degrees) {
+      return degrees * Math.PI / 180;
+    }
+
+    function signedAngleLabel(theta) {
+      const value = deg(theta);
+      return `${value >= 0 ? '+' : ''}${value.toFixed(1)} deg`;
+    }
+
+    function fitCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(rect.height));
+      const scaledWidth = Math.round(width * dpr);
+      const scaledHeight = Math.round(height * dpr);
+
+      if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
+        canvas.width = scaledWidth;
+        canvas.height = scaledHeight;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, width, height };
+    }
+
+    function map(value, a0, a1, b0, b1) {
+      return b0 + (value - a0) * (b1 - b0) / (a1 - a0);
+    }
+
+    function drawLine(ctx, points, stroke, width, dash) {
+      if (points.length < 2) {
+        return;
+      }
+      ctx.save();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (dash) {
+        ctx.setLineDash(dash);
+      }
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i += 1) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function clear(ctx, width, height) {
+      ctx.clearRect(0, 0, width, height);
+    }
+
+    function drawText(ctx, text, x, y, options = {}) {
+      ctx.save();
+      ctx.fillStyle = options.fill || colors.muted;
+      ctx.font = options.font || '12px Inter, system-ui, sans-serif';
+      ctx.textAlign = options.align || 'left';
+      ctx.textBaseline = options.baseline || 'middle';
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawDot(ctx, x, y, radius, fill, stroke, lineWidth = 2) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function worldPoint(theta, phase) {
+      return {
+        x: Math.sin(theta) * Math.cos(phase),
+        y: Math.sin(theta) * Math.sin(phase),
+        z: -Math.cos(theta)
+      };
+    }
+
+    function makeProjector(width, height) {
+      const yaw = -0.72;
+      const cosYaw = Math.cos(yaw);
+      const sinYaw = Math.sin(yaw);
+      const scale = Math.min(width * 0.36, height * 0.36);
+      const cx = width * 0.52;
+      const cy = height * 0.52;
+
+      return function project(point) {
+        const x = point.x * cosYaw - point.y * sinYaw;
+        const depth = point.x * sinYaw + point.y * cosYaw;
+        const z = point.z;
+        const perspective = 1 / (1 + depth * 0.18);
+        return {
+          x: cx + x * scale * perspective,
+          y: cy - z * scale * perspective + depth * scale * 0.16,
+          depth,
+          scale: scale * perspective
+        };
+      };
+    }
+
+    function drawArrow(ctx, from, to, color, label) {
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const head = 8;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - head * Math.cos(angle - 0.55), to.y - head * Math.sin(angle - 0.55));
+      ctx.lineTo(to.x - head * Math.cos(angle + 0.55), to.y - head * Math.sin(angle + 0.55));
+      ctx.closePath();
+      ctx.fill();
+      if (label) {
+        drawText(ctx, label, to.x + 8, to.y, { fill: color, font: '12px Inter, system-ui, sans-serif' });
+      }
+      ctx.restore();
+    }
+
+    function drawScene() {
+      const { ctx, width, height } = fitCanvas(sceneCanvas);
+      clear(ctx, width, height);
+      const project = makeProjector(width, height);
+      const thetaEq = equilibriumAngle(state.lambda);
+      const actualTheta = state.theta;
+      const phase = state.phase;
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#f9fbfc');
+      gradient.addColorStop(1, '#eef4f6');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      const axisBottom = project({ x: 0, y: 0, z: -1.25 });
+      const axisTop = project({ x: 0, y: 0, z: 1.25 });
+      drawLine(ctx, [axisBottom, axisTop], 'rgba(64, 83, 92, 0.65)', 2.2, [7, 7]);
+      drawText(ctx, 'rotation axis', axisTop.x + 10, axisTop.y + 8, { fill: colors.axis });
+
+      const floorPoints = [];
+      for (let i = 0; i <= 140; i += 1) {
+        const a = i / 140 * Math.PI * 2;
+        floorPoints.push(project({ x: Math.cos(a), y: Math.sin(a), z: -1 }));
+      }
+      drawLine(ctx, floorPoints, 'rgba(64, 83, 92, 0.16)', 1.4, [5, 7]);
+
+      if (state.trail.length > 1) {
+        const trailPoints = state.trail.map((point) => project(point));
+        for (let i = 1; i < trailPoints.length; i += 1) {
+          const alpha = i / trailPoints.length;
+          drawLine(ctx, [trailPoints[i - 1], trailPoints[i]], `rgba(47, 111, 189, ${0.08 + alpha * 0.26})`, 2.4);
+        }
+      }
+
+      const ring = [];
+      const er = { x: Math.cos(phase), y: Math.sin(phase) };
+      for (let i = 0; i <= 220; i += 1) {
+        const a = i / 220 * Math.PI * 2;
+        const point = {
+          x: Math.sin(a) * er.x,
+          y: Math.sin(a) * er.y,
+          z: -Math.cos(a)
+        };
+        ring.push({ point, projected: project(point) });
+      }
+
+      const segments = [];
+      for (let i = 1; i < ring.length; i += 1) {
+        segments.push({
+          a: ring[i - 1].projected,
+          b: ring[i].projected,
+          depth: (ring[i - 1].projected.depth + ring[i].projected.depth) / 2
+        });
+      }
+      segments.sort((a, b) => a.depth - b.depth);
+
+      for (const segment of segments) {
+        const alpha = map(segment.depth, -1.1, 1.1, 0.26, 0.92);
+        drawLine(ctx, [segment.a, segment.b], `rgba(8, 127, 140, ${clamp(alpha, 0.22, 0.95)})`, 4.4);
+      }
+
+      const center = project({ x: 0, y: 0, z: 0 });
+      const radialEnd = project({ x: er.x, y: er.y, z: 0 });
+      drawLine(ctx, [center, radialEnd], 'rgba(8, 127, 140, 0.24)', 2.4, [4, 7]);
+
+      const eqTheta = state.branchSign * thetaEq;
+      if (thetaEq > 0.001) {
+        const eqPoint = project(worldPoint(eqTheta, phase));
+        drawDot(ctx, eqPoint.x, eqPoint.y, 6, 'rgba(47, 143, 91, 0.22)', colors.green, 2);
+        if (state.showMirror) {
+          const mirrorPoint = project(worldPoint(-eqTheta, phase));
+          drawDot(ctx, mirrorPoint.x, mirrorPoint.y, 5, 'rgba(194, 65, 75, 0.10)', 'rgba(194, 65, 75, 0.58)', 1.7);
+        }
+      }
+
+      const beadWorld = worldPoint(actualTheta, phase);
+      const bead = project(beadWorld);
+      const beadRadius = clamp(11 * bead.scale / Math.min(width * 0.36, height * 0.36), 8, 14);
+      const beadFill = ctx.createRadialGradient(bead.x - beadRadius * 0.35, bead.y - beadRadius * 0.35, 2, bead.x, bead.y, beadRadius);
+      beadFill.addColorStop(0, '#ffe7ba');
+      beadFill.addColorStop(0.52, '#d97706');
+      beadFill.addColorStop(1, '#8a4b05');
+      drawDot(ctx, bead.x, bead.y, beadRadius + 2, 'rgba(217, 119, 6, 0.15)');
+      drawDot(ctx, bead.x, bead.y, beadRadius, beadFill, '#ffffff', 2.5);
+
+      const gravityTo = { x: bead.x, y: bead.y + 54 };
+      drawArrow(ctx, { x: bead.x, y: bead.y + beadRadius + 6 }, gravityTo, colors.red, 'g');
+      if (Math.abs(Math.sin(actualTheta)) > 0.04) {
+        const outward = project({
+          x: beadWorld.x + Math.sign(Math.sin(actualTheta)) * er.x * 0.34,
+          y: beadWorld.y + Math.sign(Math.sin(actualTheta)) * er.y * 0.34,
+          z: beadWorld.z
+        });
+        drawArrow(ctx, { x: bead.x, y: bead.y }, outward, colors.blue, 'spin');
+      }
+
+      drawText(ctx, `theta = ${signedAngleLabel(actualTheta)}`, 18, 24, {
+        fill: colors.ink,
+        font: '700 13px Inter, system-ui, sans-serif'
+      });
+      drawText(ctx, `theta* = ${signedAngleLabel(eqTheta)}`, 18, 44, { fill: colors.green });
+      drawText(ctx, `lambda = ${state.lambda.toFixed(2)}`, 18, 64, { fill: colors.teal });
+    }
+
+    function drawPlotFrame(ctx, width, height, margins, xLabel, yLabel) {
+      const left = margins.left;
+      const right = width - margins.right;
+      const top = margins.top;
+      const bottom = height - margins.bottom;
+
+      ctx.save();
+      ctx.strokeStyle = colors.grid;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = map(i, 0, 4, bottom, top);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+      }
+      for (let i = 0; i <= 4; i += 1) {
+        const x = map(i, 0, 4, left, right);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = colors.axis;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+      ctx.restore();
+
+      drawText(ctx, xLabel, (left + right) / 2, height - 15, { align: 'center', fill: colors.axis });
+      drawText(ctx, yLabel, 14, (top + bottom) / 2, {
+        align: 'center',
+        fill: colors.axis,
+        font: '12px Inter, system-ui, sans-serif'
+      });
+
+      return { left, right, top, bottom };
+    }
+
+    function drawBranches() {
+      const { ctx, width, height } = fitCanvas(branchCanvas);
+      clear(ctx, width, height);
+      const margins = { left: 54, right: 18, top: 20, bottom: 44 };
+      const frame = drawPlotFrame(ctx, width, height, margins, 'lambda = Omega / sqrt(g / R)', 'theta');
+      const xFor = (lambda) => map(lambda, 0, 4, frame.left, frame.right);
+      const yFor = (degrees) => map(degrees, -95, 95, frame.bottom, frame.top);
+
+      for (const value of [-90, -45, 0, 45, 90]) {
+        drawText(ctx, `${value}`, frame.left - 12, yFor(value), { align: 'right', fill: colors.muted });
+      }
+      for (const value of [0, 1, 2, 3, 4]) {
+        drawText(ctx, `${value}`, xFor(value), frame.bottom + 17, { align: 'center', fill: colors.muted });
+      }
+
+      drawLine(ctx, [{ x: xFor(1), y: frame.top }, { x: xFor(1), y: frame.bottom }], 'rgba(217, 119, 6, 0.62)', 1.6, [5, 5]);
+      drawText(ctx, 'critical', xFor(1) + 8, frame.top + 12, { fill: colors.orange });
+
+      drawLine(ctx, [{ x: frame.left, y: yFor(0) }, { x: xFor(1), y: yFor(0) }], colors.green, 3);
+      drawLine(ctx, [{ x: xFor(1), y: yFor(0) }, { x: frame.right, y: yFor(0) }], colors.red, 2.3, [7, 6]);
+
+      const upper = [];
+      const lower = [];
+      for (let i = 0; i <= 240; i += 1) {
+        const lambda = 1 + i / 240 * 3;
+        const angle = deg(equilibriumAngle(lambda));
+        upper.push({ x: xFor(lambda), y: yFor(angle) });
+        lower.push({ x: xFor(lambda), y: yFor(-angle) });
+      }
+      drawLine(ctx, upper, colors.green, 3.2);
+      drawLine(ctx, lower, colors.green, 3.2);
+
+      const currentX = xFor(state.lambda);
+      drawLine(ctx, [{ x: currentX, y: frame.top }, { x: currentX, y: frame.bottom }], 'rgba(47, 111, 189, 0.35)', 1.4);
+      drawDot(ctx, currentX, yFor(deg(state.theta)), 6.5, colors.orange, '#ffffff', 2);
+
+      const thetaEq = deg(equilibriumAngle(state.lambda));
+      if (thetaEq > 0) {
+        drawDot(ctx, currentX, yFor(thetaEq), 4.6, colors.green, '#ffffff', 1.6);
+        drawDot(ctx, currentX, yFor(-thetaEq), 4.6, colors.green, '#ffffff', 1.6);
+      } else {
+        drawDot(ctx, currentX, yFor(0), 4.6, colors.green, '#ffffff', 1.6);
+      }
+
+      drawText(ctx, 'stable', xFor(3.28), yFor(74), { fill: colors.green, font: '700 12px Inter, system-ui, sans-serif' });
+      drawText(ctx, 'unstable bottom', xFor(2.52), yFor(-9), { fill: colors.red });
+    }
+
+    function drawPotential() {
+      const { ctx, width, height } = fitCanvas(potentialCanvas);
+      clear(ctx, width, height);
+      const margins = { left: 52, right: 18, top: 20, bottom: 44 };
+      const left = margins.left;
+      const right = width - margins.right;
+      const top = margins.top;
+      const bottom = height - margins.bottom;
+      const samples = [];
+      let minU = Infinity;
+      let maxU = -Infinity;
+      for (let i = 0; i <= 360; i += 1) {
+        const theta = map(i, 0, 360, -Math.PI, Math.PI);
+        const u = potential(theta, state.lambda);
+        samples.push({ theta, u });
+        minU = Math.min(minU, u);
+        maxU = Math.max(maxU, u);
+      }
+      const pad = Math.max(0.18, (maxU - minU) * 0.14);
+      minU -= pad;
+      maxU += pad;
+      const xFor = (theta) => map(theta, -Math.PI, Math.PI, left, right);
+      const yFor = (u) => map(u, minU, maxU, bottom, top);
+
+      ctx.save();
+      ctx.strokeStyle = colors.grid;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = map(i, 0, 4, bottom, top);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+      }
+      for (const degrees of [-180, -90, 0, 90, 180]) {
+        const x = xFor(rad(degrees));
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        drawText(ctx, `${degrees}`, x, bottom + 17, { align: 'center', fill: colors.muted });
+      }
+      ctx.strokeStyle = colors.axis;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+      ctx.restore();
+
+      drawText(ctx, 'theta in hoop plane', (left + right) / 2, height - 15, { align: 'center', fill: colors.axis });
+      drawText(ctx, 'U', 16, (top + bottom) / 2, { align: 'center', fill: colors.axis });
+
+      const curve = samples.map((sample) => ({ x: xFor(sample.theta), y: yFor(sample.u) }));
+      drawLine(ctx, curve, colors.teal, 3);
+
+      const thetaEq = equilibriumAngle(state.lambda);
+      const minima = thetaEq > 0.001 ? [thetaEq, -thetaEq] : [0];
+      for (const theta of minima) {
+        drawDot(ctx, xFor(theta), yFor(potential(theta, state.lambda)), 5.5, colors.green, '#ffffff', 2);
+      }
+      drawDot(ctx, xFor(state.theta), yFor(potential(state.theta, state.lambda)), 6.5, colors.orange, '#ffffff', 2);
+
+      if (state.lambda > 1) {
+        drawDot(ctx, xFor(0), yFor(potential(0, state.lambda)), 4.6, colors.red, '#ffffff', 1.8);
+        drawText(ctx, 'new hill', xFor(0) + 8, yFor(potential(0, state.lambda)) - 10, { fill: colors.red });
+      } else {
+        drawText(ctx, 'single well', xFor(0) + 8, yFor(potential(0, state.lambda)) - 12, { fill: colors.green });
+      }
+    }
+
+    function drawBalance() {
+      const { ctx, width, height } = fitCanvas(balanceCanvas);
+      clear(ctx, width, height);
+      const margins = { left: 56, right: 24, top: 26, bottom: 48 };
+      const frame = drawPlotFrame(ctx, width, height, margins, 'lambda', 'cos(theta*)');
+      const xFor = (lambda) => map(lambda, 0, 4, frame.left, frame.right);
+      const yFor = (value) => map(value, 0, 1.2, frame.bottom, frame.top);
+
+      for (const value of [0, 0.5, 1]) {
+        drawText(ctx, value.toFixed(value === 0 ? 0 : 1), frame.left - 12, yFor(value), { align: 'right', fill: colors.muted });
+      }
+      for (const value of [0, 1, 2, 3, 4]) {
+        drawText(ctx, `${value}`, xFor(value), frame.bottom + 17, { align: 'center', fill: colors.muted });
+      }
+
+      drawLine(ctx, [{ x: frame.left, y: yFor(1) }, { x: frame.right, y: yFor(1) }], 'rgba(64, 83, 92, 0.24)', 1.5, [5, 6]);
+      drawText(ctx, 'gravity curvature at bottom', xFor(2.05), yFor(1) - 13, { fill: colors.axis });
+
+      const spinCurve = [];
+      for (let i = 0; i <= 240; i += 1) {
+        const lambda = i / 240 * 4;
+        spinCurve.push({ x: xFor(lambda), y: yFor(Math.min(lambda * lambda, 1.2)) });
+      }
+      drawLine(ctx, spinCurve, colors.orange, 2.6);
+      drawText(ctx, 'spin curvature lambda^2', xFor(2.22), yFor(1.16), { fill: colors.orange });
+
+      const balanceCurve = [];
+      for (let i = 0; i <= 240; i += 1) {
+        const lambda = 1 + i / 240 * 3;
+        balanceCurve.push({ x: xFor(lambda), y: yFor(1 / (lambda * lambda)) });
+      }
+      drawLine(ctx, balanceCurve, colors.blue, 3.2);
+      drawText(ctx, 'side branch: cos(theta*) = 1 / lambda^2', xFor(1.36), yFor(0.35), {
+        fill: colors.blue,
+        font: '700 12px Inter, system-ui, sans-serif'
+      });
+
+      drawLine(ctx, [{ x: xFor(1), y: frame.top }, { x: xFor(1), y: frame.bottom }], 'rgba(217, 119, 6, 0.58)', 1.5, [5, 5]);
+      drawText(ctx, 'critical', xFor(1) + 8, frame.top + 12, { fill: colors.orange });
+
+      const currentX = xFor(state.lambda);
+      const currentCos = Math.cos(Math.abs(state.theta));
+      drawLine(ctx, [{ x: currentX, y: frame.top }, { x: currentX, y: frame.bottom }], 'rgba(47, 111, 189, 0.35)', 1.4);
+      drawDot(ctx, currentX, yFor(clamp(currentCos, 0, 1.2)), 6.5, colors.orange, '#ffffff', 2);
+
+      if (state.lambda > 1) {
+        const target = 1 / (state.lambda * state.lambda);
+        drawDot(ctx, currentX, yFor(target), 5.2, colors.blue, '#ffffff', 2);
+        drawLine(ctx, [{ x: currentX, y: yFor(target) }, { x: xFor(4), y: yFor(0) }], 'rgba(47, 111, 189, 0.18)', 1.2, [4, 8]);
+      }
+
+      const barBase = frame.bottom - 12;
+      const barWidth = Math.min(90, (frame.right - frame.left) * 0.16);
+      const barGap = 12;
+      const barLeft = frame.right - barWidth * 2 - barGap - 10;
+      const barMax = 76;
+      const gravityHeight = barMax;
+      const spinHeight = clamp(state.lambda * state.lambda, 0, 1.6) / 1.6 * barMax;
+      ctx.save();
+      ctx.fillStyle = 'rgba(47, 143, 91, 0.20)';
+      ctx.fillRect(barLeft, barBase - gravityHeight, barWidth, gravityHeight);
+      ctx.strokeStyle = colors.green;
+      ctx.strokeRect(barLeft, barBase - gravityHeight, barWidth, gravityHeight);
+      ctx.fillStyle = 'rgba(217, 119, 6, 0.22)';
+      ctx.fillRect(barLeft + barWidth + barGap, barBase - spinHeight, barWidth, spinHeight);
+      ctx.strokeStyle = colors.orange;
+      ctx.strokeRect(barLeft + barWidth + barGap, barBase - spinHeight, barWidth, spinHeight);
+      ctx.restore();
+      drawText(ctx, '1', barLeft + barWidth / 2, barBase + 14, { align: 'center', fill: colors.green });
+      drawText(ctx, 'lambda^2', barLeft + barWidth + barGap + barWidth / 2, barBase + 14, { align: 'center', fill: colors.orange });
+    }
+
+    function updateDynamics(dtSeconds) {
+      if (state.sweep) {
+        state.lambda += state.sweepDirection * state.sweepRate * dtSeconds;
+        if (state.lambda >= 4) {
+          state.lambda = 4;
+          state.sweepDirection = -1;
+        } else if (state.lambda <= 0) {
+          state.lambda = 0;
+          state.sweepDirection = 1;
+        }
+        lambdaSlider.value = state.lambda.toFixed(2);
+      }
+
+      const dt = Math.min(0.033, dtSeconds) * 1.55;
+      const steps = 5;
+      const step = dt / steps;
+      for (let i = 0; i < steps; i += 1) {
+        if (state.lambda > 1.002 && Math.abs(state.theta) < 0.0008 && Math.abs(state.thetaDot) < 0.0008) {
+          state.theta += state.branchSign * 0.0012;
+        }
+        const acceleration = Math.sin(state.theta) * (state.lambda * state.lambda * Math.cos(state.theta) - 1) - state.damping * state.thetaDot;
+        state.thetaDot += acceleration * step;
+        state.theta += state.thetaDot * step;
+        if (state.theta > Math.PI) {
+          state.theta -= Math.PI * 2;
+        } else if (state.theta < -Math.PI) {
+          state.theta += Math.PI * 2;
+        }
+      }
+
+      state.phase += state.lambda * dt;
+      if (state.phase > Math.PI * 2) {
+        state.phase %= Math.PI * 2;
+      }
+
+      state.trail.push(worldPoint(state.theta, state.phase));
+      if (state.trail.length > 160) {
+        state.trail.splice(0, state.trail.length - 160);
+      }
+    }
+
+    function updateReadouts() {
+      const thetaEq = equilibriumAngle(state.lambda);
+      const signedEq = state.branchSign * thetaEq;
+      const absTheta = Math.abs(state.theta);
+      const phaseText = state.lambda < 1 ? 'subcritical' : 'supercritical';
+      const phaseStrong = phasePill.querySelector('strong');
+      phaseStrong.textContent = phaseText;
+      phasePill.classList.toggle('critical', Math.abs(state.lambda - 1) < 0.08);
+
+      lambdaOut.value = state.lambda.toFixed(2);
+      dampingOut.value = state.damping.toFixed(2);
+      sweepOut.value = state.sweepRate.toFixed(2);
+      lambdaMetric.textContent = state.lambda.toFixed(2);
+      thetaMetric.textContent = signedAngleLabel(state.theta);
+      heightMetric.textContent = (-Math.cos(state.theta)).toFixed(2);
+      radiusMetric.textContent = Math.abs(Math.sin(state.theta)).toFixed(2);
+      thetaStarTop.textContent = signedAngleLabel(signedEq);
+      sceneMeta.textContent = state.lambda < 1
+        ? 'bottom equilibrium is stable'
+        : 'bottom equilibrium is unstable';
+
+      const nearLimit = state.lambda > 2.8 ? ', approaching 90 degrees' : '';
+      if (state.lambda > 1) {
+        sceneMeta.textContent = `side wells at +/- ${deg(thetaEq).toFixed(1)} deg${nearLimit}`;
+      }
+
+      positiveBranch.setAttribute('aria-pressed', String(state.branchSign > 0));
+      negativeBranch.setAttribute('aria-pressed', String(state.branchSign < 0));
+      sweepButton.setAttribute('aria-pressed', String(state.sweep));
+      sweepButton.textContent = state.sweep ? 'Stop sweep' : 'Start sweep';
+
+      if (state.lambda < 1 && absTheta < 0.02) {
+        thetaMetric.textContent = '0.0 deg';
+      }
+    }
+
+    function drawAll() {
+      drawScene();
+      drawBranches();
+      drawPotential();
+      drawBalance();
+    }
+
+    function animate(now) {
+      const dt = (now - state.lastTime) / 1000;
+      state.lastTime = now;
+      updateDynamics(dt);
+      updateReadouts();
+      drawAll();
+      requestAnimationFrame(animate);
+    }
+
+    lambdaSlider.addEventListener('input', () => {
+      state.lambda = Number(lambdaSlider.value);
+      state.sweep = false;
+    });
+
+    dampingSlider.addEventListener('input', () => {
+      state.damping = Number(dampingSlider.value);
+    });
+
+    sweepSlider.addEventListener('input', () => {
+      state.sweepRate = Number(sweepSlider.value);
+    });
+
+    sweepButton.addEventListener('click', () => {
+      state.sweep = !state.sweep;
+    });
+
+    settleButton.addEventListener('click', () => {
+      state.theta = state.branchSign * equilibriumAngle(state.lambda);
+      state.thetaDot = 0;
+      state.trail = [];
+    });
+
+    nudgeButton.addEventListener('click', () => {
+      state.thetaDot += state.branchSign * 0.72;
+    });
+
+    resetButton.addEventListener('click', () => {
+      state.theta = state.branchSign * 0.035;
+      state.thetaDot = 0;
+      state.phase = 0;
+      state.trail = [];
+    });
+
+    positiveBranch.addEventListener('click', () => {
+      if (state.branchSign < 0) {
+        state.theta = -state.theta;
+        state.thetaDot = -state.thetaDot;
+      }
+      state.branchSign = 1;
+    });
+
+    negativeBranch.addEventListener('click', () => {
+      if (state.branchSign > 0) {
+        state.theta = -state.theta;
+        state.thetaDot = -state.thetaDot;
+      }
+      state.branchSign = -1;
+    });
+
+    mirrorToggle.addEventListener('change', () => {
+      state.showMirror = mirrorToggle.checked;
+    });
+
+    window.addEventListener('resize', drawAll);
+
+    updateReadouts();
+    drawAll();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
