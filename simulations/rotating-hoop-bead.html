@@ -114,7 +114,8 @@
       grid-template-areas:
         "scene controls"
         "branches potential"
-        "balance balance";
+        "force phase"
+        "balance stability";
       gap: 16px;
       width: min(1460px, calc(100% - 32px));
       margin: 16px auto 26px;
@@ -148,8 +149,23 @@
       min-width: 0;
     }
 
+    .force-panel {
+      grid-area: force;
+      min-width: 0;
+    }
+
+    .phase-panel {
+      grid-area: phase;
+      min-width: 0;
+    }
+
     .balance-panel {
       grid-area: balance;
+      min-width: 0;
+    }
+
+    .stability-panel {
+      grid-area: stability;
       min-width: 0;
     }
 
@@ -249,6 +265,58 @@
       font-weight: 720;
     }
 
+    .help-term {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+      text-decoration-line: underline;
+      text-decoration-style: dotted;
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 4px;
+    }
+
+    .help-term::before,
+    .help-term::after {
+      position: absolute;
+      left: 50%;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -3px);
+      transition: opacity 140ms ease 520ms, transform 140ms ease 520ms;
+      z-index: 30;
+    }
+
+    .help-term::before {
+      content: "";
+      top: calc(100% + 5px);
+      border: 6px solid transparent;
+      border-bottom-color: #172126;
+    }
+
+    .help-term::after {
+      content: attr(data-tooltip);
+      top: calc(100% + 16px);
+      width: max-content;
+      max-width: min(300px, calc(100vw - 34px));
+      padding: 8px 10px;
+      border-radius: 7px;
+      background: #172126;
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(23, 33, 38, 0.22);
+      font-size: 0.78rem;
+      font-weight: 620;
+      line-height: 1.35;
+      text-align: left;
+      white-space: normal;
+    }
+
+    .help-term:hover::before,
+    .help-term:hover::after,
+    .help-term:focus-visible::before,
+    .help-term:focus-visible::after {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
     output {
       color: var(--muted);
       font-size: 0.86rem;
@@ -371,7 +439,10 @@
           "controls"
           "branches"
           "potential"
-          "balance";
+          "force"
+          "phase"
+          "balance"
+          "stability";
         width: min(100% - 20px, 760px);
         margin-top: 10px;
       }
@@ -429,6 +500,10 @@
       .metric:last-child {
         border-bottom: 0;
       }
+
+      .stability-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
   </style>
 </head>
@@ -440,8 +515,8 @@
     </div>
     <div class="top-readouts" aria-label="Current simulation values">
       <span class="pill" id="phasePill"><span>state</span><strong>subcritical</strong></span>
-      <span class="pill"><span>critical</span><strong>&lambda; = 1</strong></span>
-      <span class="pill"><span>stable &theta;*</span><strong id="thetaStarTop">0.0 deg</strong></span>
+      <span class="pill"><span class="help-term" tabindex="0" data-tooltip="The critical spin ratio. Above lambda = 1, the bottom point stops being stable.">critical</span><strong>&lambda; = 1</strong></span>
+      <span class="pill"><span class="help-term" tabindex="0" data-tooltip="The stable equilibrium angle predicted by cos(theta*) = 1 / lambda^2 once the spin is supercritical.">stable &theta;*</span><strong id="thetaStarTop">0.0 deg</strong></span>
     </div>
   </header>
 
@@ -456,19 +531,19 @@
       </div>
       <div class="metrics" aria-label="Simulation metrics">
         <div class="metric">
-          <span class="label">spin ratio</span>
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="Lambda is the spin speed divided by sqrt(g / R), so lambda = 1 is the critical speed.">spin ratio</span></span>
           <span class="value" id="lambdaMetric">0.70</span>
         </div>
         <div class="metric">
-          <span class="label">bead angle</span>
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="Theta is measured along the hoop from the bottom. Positive and negative values are the two symmetric sides.">bead angle</span></span>
           <span class="value" id="thetaMetric">0.0 deg</span>
         </div>
         <div class="metric">
-          <span class="label">height z / R</span>
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="The bead height divided by hoop radius. The bottom is -1 and the center height is 0.">height z / R</span></span>
           <span class="value" id="heightMetric">-1.00</span>
         </div>
         <div class="metric">
-          <span class="label">radius r / R</span>
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="The bead distance from the rotation axis divided by hoop radius. This grows as the bead moves outward.">radius r / R</span></span>
           <span class="value" id="radiusMetric">0.00</span>
         </div>
       </div>
@@ -482,7 +557,7 @@
       <div class="controls">
         <div class="control">
           <div class="control-row">
-            <label for="lambdaSlider">Spin speed</label>
+            <label for="lambdaSlider"><span class="help-term" tabindex="0" data-tooltip="Controls lambda = Omega / sqrt(g / R). Increasing it strengthens the spin term relative to gravity.">Spin speed</span></label>
             <output id="lambdaOut" for="lambdaSlider">0.70</output>
           </div>
           <input id="lambdaSlider" type="range" min="0" max="4" step="0.01" value="0.70">
@@ -490,7 +565,7 @@
 
         <div class="control">
           <div class="control-row">
-            <label for="dampingSlider">Damping</label>
+            <label for="dampingSlider"><span class="help-term" tabindex="0" data-tooltip="Removes energy from the bead motion so it settles into a stable well instead of oscillating forever.">Damping</span></label>
             <output id="dampingOut" for="dampingSlider">0.78</output>
           </div>
           <input id="dampingSlider" type="range" min="0" max="2.5" step="0.01" value="0.78">
@@ -498,7 +573,7 @@
 
         <div class="control">
           <div class="control-row">
-            <label for="sweepSlider">Sweep rate</label>
+            <label for="sweepSlider"><span class="help-term" tabindex="0" data-tooltip="How quickly the automatic sweep changes lambda when Start sweep is active.">Sweep rate</span></label>
             <output id="sweepOut" for="sweepSlider">0.28</output>
           </div>
           <input id="sweepSlider" type="range" min="0.04" max="1.2" step="0.01" value="0.28">
@@ -512,14 +587,14 @@
         </div>
 
         <div class="control">
-          <span class="control-title">Scene view</span>
+          <span class="control-title"><span class="help-term" tabindex="0" data-tooltip="Switch between a lab-fixed camera and a rotating view that stays locked to the hoop.">Scene view</span></span>
           <div class="segmented" role="group" aria-label="Scene view mode">
             <button id="fixedCameraView" type="button" aria-pressed="true">Fixed camera</button>
             <button id="fixedFrameView" type="button" aria-pressed="false">Hoop-fixed frame</button>
           </div>
         </div>
         <div class="control">
-          <span class="control-title">Stable side</span>
+          <span class="control-title"><span class="help-term" tabindex="0" data-tooltip="Above the critical spin there are two symmetric stable equilibria; choose which side the bead settles toward.">Stable side</span></span>
           <div class="segmented" role="group" aria-label="Stable side selection">
             <button id="positiveBranch" type="button" aria-pressed="true">+ side</button>
             <button id="negativeBranch" type="button" aria-pressed="false">- side</button>
@@ -528,7 +603,7 @@
 
         <label class="check-row">
           <input id="mirrorToggle" type="checkbox" checked>
-          mirror branch
+          <span class="help-term" tabindex="0" data-tooltip="Shows the matching equilibrium on the opposite side of the hoop.">mirror branch</span>
         </label>
       </div>
       <div class="equation">
@@ -557,6 +632,26 @@
       </div>
     </section>
 
+    <section class="panel force-panel">
+      <div class="panel-head">
+        <h2>Net Tangential Force</h2>
+        <div class="meta">F(theta) = sin(theta) * (lambda^2 cos(theta) - 1)</div>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="forceCanvas" aria-label="Net tangential force graph"></canvas>
+      </div>
+    </section>
+
+    <section class="panel phase-panel">
+      <div class="panel-head">
+        <h2>Phase Plane And Nullclines</h2>
+        <div class="meta">theta-dot = 0 and theta-double-dot = 0</div>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="phaseCanvas" aria-label="Phase plane with nullclines"></canvas>
+      </div>
+    </section>
+
     <section class="panel balance-panel">
       <div class="panel-head">
         <h2>Balance Toward 90 Degrees</h2>
@@ -566,12 +661,53 @@
         <canvas id="balanceCanvas" aria-label="Balance condition graph"></canvas>
       </div>
     </section>
+
+    <section class="panel stability-panel">
+      <div class="panel-head">
+        <h2>Local Stability Measurements</h2>
+        <div class="meta">linearized around the selected equilibrium</div>
+      </div>
+      <div class="stability-grid" aria-label="Stability measurements">
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="The equilibrium angle the selected stable side predicts for the current spin speed.">selected equilibrium</span></span>
+          <strong id="equilibriumReadout">0.0 deg</strong>
+          <small id="equilibriumNote">bottom well</small>
+        </div>
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="Eigenvalues of the local first-order system [thetaDot, thetaDoubleDot]. Negative real parts mean local attraction.">eigenvalues</span></span>
+          <strong id="eigenReadout">-0.39 +/- 0.92i</strong>
+          <small id="eigenNote">stable spiral</small>
+        </div>
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="Potential curvature at the selected equilibrium. Positive curvature is a well; negative curvature is a hill.">local curvature</span></span>
+          <strong id="curvatureReadout">0.51</strong>
+          <small>higher means a stiffer well</small>
+        </div>
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="The current undamped tangential force term in the theta equation. Its sign shows which way the bead is pushed along the hoop.">current force</span></span>
+          <strong id="forceReadout">0.000</strong>
+          <small>positive pushes toward +theta</small>
+        </div>
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="Effective energy in the rotating-frame potential plus kinetic energy. Damping drains it when lambda is fixed.">effective energy</span></span>
+          <strong id="energyReadout">0.000</strong>
+          <small>0.5 thetaDot^2 + U(theta)</small>
+        </div>
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="For supercritical spin, this is the potential rise from a side well back to the now-unstable bottom hill.">barrier to center</span></span>
+          <strong id="barrierReadout">n/a</strong>
+          <small>appears after lambda passes 1</small>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script>
     const sceneCanvas = document.getElementById('sceneCanvas');
     const branchCanvas = document.getElementById('branchCanvas');
     const potentialCanvas = document.getElementById('potentialCanvas');
+    const forceCanvas = document.getElementById('forceCanvas');
+    const phaseCanvas = document.getElementById('phaseCanvas');
     const balanceCanvas = document.getElementById('balanceCanvas');
 
     const lambdaSlider = document.getElementById('lambdaSlider');
@@ -599,6 +735,14 @@
     const radiusMetric = document.getElementById('radiusMetric');
     const sceneMeta = document.getElementById('sceneMeta');
     const sceneTitle = document.getElementById('sceneTitle');
+    const equilibriumReadout = document.getElementById('equilibriumReadout');
+    const equilibriumNote = document.getElementById('equilibriumNote');
+    const eigenReadout = document.getElementById('eigenReadout');
+    const eigenNote = document.getElementById('eigenNote');
+    const curvatureReadout = document.getElementById('curvatureReadout');
+    const forceReadout = document.getElementById('forceReadout');
+    const energyReadout = document.getElementById('energyReadout');
+    const barrierReadout = document.getElementById('barrierReadout');
 
     const colors = {
       ink: '#172126',
@@ -644,6 +788,84 @@
     function potential(theta, lambda) {
       const sin = Math.sin(theta);
       return 1 - Math.cos(theta) - 0.5 * lambda * lambda * sin * sin;
+    }
+    function tangentialForce(theta, lambda) {
+      return Math.sin(theta) * (lambda * lambda * Math.cos(theta) - 1);
+    }
+
+    function forceSlope(theta, lambda) {
+      return lambda * lambda * Math.cos(2 * theta) - Math.cos(theta);
+    }
+
+    function selectedEquilibrium() {
+      const thetaEq = equilibriumAngle(state.lambda);
+      return state.lambda > 1 ? state.branchSign * thetaEq : 0;
+    }
+
+    function equilibriumAngles(lambda) {
+      const angles = [0];
+      const thetaEq = equilibriumAngle(lambda);
+      if (thetaEq > 0.001) {
+        angles.push(thetaEq, -thetaEq);
+      }
+      return angles;
+    }
+
+    function localLinearization(theta, lambda, damping) {
+      const slope = forceSlope(theta, lambda);
+      const discriminant = damping * damping + 4 * slope;
+      if (discriminant >= 0) {
+        const root = Math.sqrt(discriminant);
+        return {
+          slope,
+          curvature: -slope,
+          complex: false,
+          r1: (-damping + root) / 2,
+          r2: (-damping - root) / 2,
+          real: 0,
+          imag: 0
+        };
+      }
+
+      return {
+        slope,
+        curvature: -slope,
+        complex: true,
+        r1: -damping / 2,
+        r2: -damping / 2,
+        real: -damping / 2,
+        imag: Math.sqrt(-discriminant) / 2
+      };
+    }
+
+    function formatScalar(value, digits = 3) {
+      if (!Number.isFinite(value)) {
+        return 'n/a';
+      }
+      if (Math.abs(value) < Math.pow(10, -digits)) {
+        return (0).toFixed(digits);
+      }
+      return value.toFixed(digits);
+    }
+
+    function formatEigenvalues(linear) {
+      if (linear.complex) {
+        return `${formatScalar(linear.real, 2)} +/- ${formatScalar(linear.imag, 2)}i`;
+      }
+      return `${formatScalar(linear.r1, 2)}, ${formatScalar(linear.r2, 2)}`;
+    }
+
+    function classifyLinearization(linear) {
+      if (Math.abs(linear.slope) < 0.0008) {
+        return 'near the critical junction';
+      }
+      if (linear.slope > 0) {
+        return 'saddle / unstable direction';
+      }
+      if (linear.complex) {
+        return state.damping > 0 ? 'stable spiral' : 'center oscillation';
+      }
+      return 'stable node';
     }
 
     function deg(rad) {
@@ -738,13 +960,26 @@
       };
     }
 
-    function makeProjector(width, height) {
+    function makeProjector(width, height, mode) {
+      const cx = width * 0.52;
+      const cy = height * 0.52;
+
+      if (mode === 'frame') {
+        const scale = Math.min(width * 0.40, height * 0.40);
+        return function project(point) {
+          return {
+            x: cx + point.x * scale,
+            y: cy - point.z * scale,
+            depth: point.y,
+            scale
+          };
+        };
+      }
+
       const yaw = -0.72;
       const cosYaw = Math.cos(yaw);
       const sinYaw = Math.sin(yaw);
       const scale = Math.min(width * 0.36, height * 0.36);
-      const cx = width * 0.52;
-      const cy = height * 0.52;
 
       return function project(point) {
         const x = point.x * cosYaw - point.y * sinYaw;
@@ -787,7 +1022,7 @@
     function drawScene() {
       const { ctx, width, height } = fitCanvas(sceneCanvas);
       clear(ctx, width, height);
-      const project = makeProjector(width, height);
+      const project = makeProjector(width, height, state.viewMode);
       const thetaEq = equilibriumAngle(state.lambda);
       const actualTheta = state.theta;
       const phase = state.viewMode === 'frame' ? 0 : state.phase;
@@ -804,13 +1039,14 @@
       drawLine(ctx, [axisBottom, axisTop], 'rgba(64, 83, 92, 0.65)', 2.2, [7, 7]);
       drawText(ctx, 'rotation axis', axisTop.x + 10, axisTop.y + 8, { fill: colors.axis });
 
-      const floorPoints = [];
-      for (let i = 0; i <= 140; i += 1) {
-        const a = i / 140 * Math.PI * 2;
-        floorPoints.push(project({ x: Math.cos(a), y: Math.sin(a), z: -1 }));
+      if (state.viewMode === 'camera') {
+        const floorPoints = [];
+        for (let i = 0; i <= 140; i += 1) {
+          const a = i / 140 * Math.PI * 2;
+          floorPoints.push(project({ x: Math.cos(a), y: Math.sin(a), z: -1 }));
+        }
+        drawLine(ctx, floorPoints, 'rgba(64, 83, 92, 0.16)', 1.4, [5, 7]);
       }
-      drawLine(ctx, floorPoints, 'rgba(64, 83, 92, 0.16)', 1.4, [5, 7]);
-
       if (state.trail.length > 1) {
         const trailPoints = state.trail.map((point) => {
           if (point.theta === undefined) {
@@ -1059,6 +1295,199 @@
       }
     }
 
+    function drawForce() {
+      const { ctx, width, height } = fitCanvas(forceCanvas);
+      clear(ctx, width, height);
+      const margins = { left: 54, right: 18, top: 22, bottom: 44 };
+      const left = margins.left;
+      const right = width - margins.right;
+      const top = margins.top;
+      const bottom = height - margins.bottom;
+      const samples = [];
+      let maxAbs = 0;
+
+      for (let i = 0; i <= 360; i += 1) {
+        const theta = map(i, 0, 360, -Math.PI, Math.PI);
+        const force = tangentialForce(theta, state.lambda);
+        samples.push({ theta, force });
+        maxAbs = Math.max(maxAbs, Math.abs(force));
+      }
+
+      const yMax = Math.max(0.8, maxAbs * 1.15);
+      const xFor = (theta) => map(theta, -Math.PI, Math.PI, left, right);
+      const yFor = (force) => map(force, -yMax, yMax, bottom, top);
+
+      ctx.save();
+      ctx.strokeStyle = colors.grid;
+      ctx.lineWidth = 1;
+      for (const degrees of [-180, -90, 0, 90, 180]) {
+        const x = xFor(rad(degrees));
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        drawText(ctx, `${degrees}`, x, bottom + 17, { align: 'center', fill: colors.muted });
+      }
+      for (const value of [-yMax, 0, yMax]) {
+        const y = yFor(value);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+        drawText(ctx, formatScalar(value, 1), left - 12, y, { align: 'right', fill: colors.muted });
+      }
+      ctx.strokeStyle = colors.axis;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+      ctx.restore();
+
+      drawLine(ctx, [{ x: left, y: yFor(0) }, { x: right, y: yFor(0) }], 'rgba(64, 83, 92, 0.45)', 1.4);
+      drawText(ctx, 'theta in hoop plane', (left + right) / 2, height - 15, { align: 'center', fill: colors.axis });
+      drawText(ctx, 'F(theta)', 18, (top + bottom) / 2, { align: 'center', fill: colors.axis });
+
+      const curve = samples.map((sample) => ({ x: xFor(sample.theta), y: yFor(sample.force) }));
+      drawLine(ctx, curve, colors.blue, 3);
+
+      for (const theta of equilibriumAngles(state.lambda)) {
+        const slope = forceSlope(theta, state.lambda);
+        const color = slope < 0 ? colors.green : colors.red;
+        drawDot(ctx, xFor(theta), yFor(0), 5.4, color, '#ffffff', 1.8);
+      }
+
+      drawDot(ctx, xFor(state.theta), yFor(tangentialForce(state.theta, state.lambda)), 6.5, colors.orange, '#ffffff', 2);
+      drawText(ctx, 'zeros are equilibria', xFor(-2.7), yFor(0) - 16, { fill: colors.axis });
+      drawText(ctx, 'positive pushes +theta', xFor(0.55), yFor(yMax * 0.72), { fill: colors.blue });
+      drawText(ctx, 'negative pushes -theta', xFor(0.55), yFor(-yMax * 0.72), { fill: colors.blue });
+    }
+
+    function drawSmallArrow(ctx, x, y, dx, dy, color) {
+      const length = Math.hypot(dx, dy);
+      if (length < 0.001) {
+        return;
+      }
+      const ux = dx / length;
+      const uy = dy / length;
+      const size = 4.2;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x - ux * 4, y - uy * 4);
+      ctx.lineTo(x + dx, y + dy);
+      ctx.stroke();
+      const ax = x + dx;
+      const ay = y + dy;
+      const angle = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - size * Math.cos(angle - 0.55), ay - size * Math.sin(angle - 0.55));
+      ctx.lineTo(ax - size * Math.cos(angle + 0.55), ay - size * Math.sin(angle + 0.55));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawPhasePlane() {
+      const { ctx, width, height } = fitCanvas(phaseCanvas);
+      clear(ctx, width, height);
+      const margins = { left: 54, right: 18, top: 22, bottom: 44 };
+      const left = margins.left;
+      const right = width - margins.right;
+      const top = margins.top;
+      const bottom = height - margins.bottom;
+      const yMax = clamp(Math.max(2.2, Math.abs(state.thetaDot) * 1.35 + 0.75), 2.2, 7);
+      const xFor = (theta) => map(theta, -Math.PI, Math.PI, left, right);
+      const yFor = (velocity) => map(velocity, -yMax, yMax, bottom, top);
+
+      ctx.save();
+      ctx.strokeStyle = colors.grid;
+      ctx.lineWidth = 1;
+      for (const degrees of [-180, -90, 0, 90, 180]) {
+        const x = xFor(rad(degrees));
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        drawText(ctx, `${degrees}`, x, bottom + 17, { align: 'center', fill: colors.muted });
+      }
+      for (const value of [-yMax, 0, yMax]) {
+        const y = yFor(value);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+        drawText(ctx, formatScalar(value, 1), left - 12, y, { align: 'right', fill: colors.muted });
+      }
+      ctx.strokeStyle = colors.axis;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+      ctx.restore();
+
+      for (let i = 0; i <= 12; i += 1) {
+        const theta = map(i, 0, 12, -Math.PI, Math.PI);
+        for (let j = 0; j <= 8; j += 1) {
+          const velocity = map(j, 0, 8, -yMax, yMax);
+          const dTheta = velocity;
+          const dVelocity = tangentialForce(theta, state.lambda) - state.damping * velocity;
+          const nx = dTheta / Math.PI;
+          const ny = dVelocity / yMax;
+          const magnitude = Math.hypot(nx, ny);
+          if (magnitude > 0.015) {
+            drawSmallArrow(ctx, xFor(theta), yFor(velocity), 11 * nx / magnitude, -11 * ny / magnitude, 'rgba(64, 83, 92, 0.34)');
+          }
+        }
+      }
+
+      drawLine(ctx, [{ x: left, y: yFor(0) }, { x: right, y: yFor(0) }], colors.green, 2.4);
+      drawText(ctx, 'theta-dot = 0', xFor(-2.92), yFor(0) - 13, { fill: colors.green });
+
+      if (state.damping > 0.035) {
+        const accelNullcline = [];
+        for (let i = 0; i <= 300; i += 1) {
+          const theta = map(i, 0, 300, -Math.PI, Math.PI);
+          const velocity = clamp(tangentialForce(theta, state.lambda) / state.damping, -yMax, yMax);
+          accelNullcline.push({ x: xFor(theta), y: yFor(velocity) });
+        }
+        drawLine(ctx, accelNullcline, colors.blue, 2.8);
+        drawText(ctx, 'theta-double-dot = 0', xFor(0.4), yFor(clamp(yMax * 0.72, -yMax, yMax)), { fill: colors.blue });
+      } else {
+        for (const theta of equilibriumAngles(state.lambda)) {
+          drawLine(ctx, [{ x: xFor(theta), y: top }, { x: xFor(theta), y: bottom }], colors.blue, 2.2, [5, 6]);
+        }
+        drawText(ctx, 'theta-double-dot = 0', xFor(0.36), top + 18, { fill: colors.blue });
+      }
+
+      for (const theta of equilibriumAngles(state.lambda)) {
+        const linear = localLinearization(theta, state.lambda, state.damping);
+        const color = linear.slope < 0 ? colors.green : colors.red;
+        drawDot(ctx, xFor(theta), yFor(0), 5.4, color, '#ffffff', 1.8);
+      }
+
+      const selected = selectedEquilibrium();
+      const linear = localLinearization(selected, state.lambda, state.damping);
+      if (!linear.complex && Math.abs(linear.slope) > 0.0008) {
+        for (const rate of [linear.r1, linear.r2]) {
+          const color = rate > 0 ? colors.red : colors.green;
+          const dTheta = 0.28;
+          const p1 = { x: xFor(selected - dTheta), y: yFor(clamp(-rate * dTheta, -yMax, yMax)) };
+          const p2 = { x: xFor(selected + dTheta), y: yFor(clamp(rate * dTheta, -yMax, yMax)) };
+          drawLine(ctx, [p1, p2], color, 1.7, [4, 5]);
+        }
+      }
+
+      drawDot(ctx, xFor(state.theta), yFor(clamp(state.thetaDot, -yMax, yMax)), 6.8, colors.orange, '#ffffff', 2);
+      drawText(ctx, 'theta', (left + right) / 2, height - 15, { align: 'center', fill: colors.axis });
+      drawText(ctx, 'theta-dot', 18, (top + bottom) / 2, { align: 'center', fill: colors.axis });
+    }
     function drawBalance() {
       const { ctx, width, height } = fitCanvas(balanceCanvas);
       clear(ctx, width, height);
@@ -1151,7 +1580,7 @@
         if (state.lambda > 1.002 && Math.abs(state.theta) < 0.0008 && Math.abs(state.thetaDot) < 0.0008) {
           state.theta += state.branchSign * 0.0012;
         }
-        const acceleration = Math.sin(state.theta) * (state.lambda * state.lambda * Math.cos(state.theta) - 1) - state.damping * state.thetaDot;
+        const acceleration = tangentialForce(state.theta, state.lambda) - state.damping * state.thetaDot;
         state.thetaDot += acceleration * step;
         state.theta += state.thetaDot * step;
         if (state.theta > Math.PI) {
@@ -1202,6 +1631,20 @@
         dynamicsText = `side wells at +/- ${deg(thetaEq).toFixed(1)} deg${nearLimit}`;
       }
       sceneMeta.textContent = `${viewPrefix}; ${dynamicsText}`;
+      const selectedTheta = selectedEquilibrium();
+      const selectedLinear = localLinearization(selectedTheta, state.lambda, state.damping);
+      const currentForce = tangentialForce(state.theta, state.lambda);
+      const currentEnergy = 0.5 * state.thetaDot * state.thetaDot + potential(state.theta, state.lambda);
+      const barrier = state.lambda > 1 ? potential(0, state.lambda) - potential(selectedTheta, state.lambda) : NaN;
+
+      equilibriumReadout.textContent = signedAngleLabel(selectedTheta);
+      equilibriumNote.textContent = state.lambda > 1 ? 'side well selected' : 'bottom well selected';
+      eigenReadout.textContent = formatEigenvalues(selectedLinear);
+      eigenNote.textContent = classifyLinearization(selectedLinear);
+      curvatureReadout.textContent = formatScalar(selectedLinear.curvature, 3);
+      forceReadout.textContent = formatScalar(currentForce, 3);
+      energyReadout.textContent = formatScalar(currentEnergy, 3);
+      barrierReadout.textContent = Number.isFinite(barrier) ? formatScalar(barrier, 3) : 'n/a';
 
       positiveBranch.setAttribute('aria-pressed', String(state.branchSign > 0));
       negativeBranch.setAttribute('aria-pressed', String(state.branchSign < 0));
@@ -1219,6 +1662,8 @@
       drawScene();
       drawBranches();
       drawPotential();
+      drawForce();
+      drawPhasePlane();
       drawBalance();
     }
 
