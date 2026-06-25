@@ -884,7 +884,8 @@
           y: beadWorld.y + Math.sign(Math.sin(actualTheta)) * er.y * 0.34,
           z: beadWorld.z
         });
-        drawArrow(ctx, { x: bead.x, y: bead.y }, outward, colors.blue, 'spin');
+        const spinLabel = state.viewMode === 'frame' ? 'centrifugal' : 'spin term';
+        drawArrow(ctx, { x: bead.x, y: bead.y }, outward, colors.blue, spinLabel);
       }
 
       drawText(ctx, `theta = ${signedAngleLabel(actualTheta)}`, 18, 24, {
