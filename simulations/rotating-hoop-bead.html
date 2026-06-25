@@ -115,7 +115,8 @@
         "scene controls"
         "branches potential"
         "force phase"
-        "balance stability";
+        "balance damping"
+        "stability stability";
       gap: 16px;
       width: min(1460px, calc(100% - 32px));
       margin: 16px auto 26px;
@@ -161,6 +162,11 @@
 
     .balance-panel {
       grid-area: balance;
+      min-width: 0;
+    }
+
+    .damping-panel {
+      grid-area: damping;
       min-width: 0;
     }
 
@@ -317,6 +323,37 @@
       opacity: 1;
       transform: translate(-50%, 0);
     }
+
+    .help-term::before,
+    .help-term::after {
+      display: none;
+    }
+
+    .floating-tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      max-width: min(300px, calc(100vw - 24px));
+      padding: 8px 10px;
+      border-radius: 7px;
+      background: #172126;
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(23, 33, 38, 0.24);
+      font-size: 0.78rem;
+      font-weight: 620;
+      line-height: 1.35;
+      text-align: left;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-3px);
+      transition: opacity 140ms ease, transform 140ms ease;
+      z-index: 1000;
+    }
+
+    .floating-tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
     output {
       color: var(--muted);
       font-size: 0.86rem;
@@ -326,6 +363,46 @@
     input[type="range"] {
       width: 100%;
       accent-color: var(--teal);
+    }
+    .range-with-marker {
+      position: relative;
+      padding: 0 2px;
+    }
+
+    .range-with-marker input[type="range"] {
+      display: block;
+      position: relative;
+      z-index: 1;
+    }
+
+    .range-marker {
+      position: absolute;
+      top: 50%;
+      width: 2px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--orange);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .range-marker.secondary {
+      background: var(--blue);
+    }
+
+    .range-marker.muted {
+      background: var(--axis);
+      opacity: 0.55;
+    }
+
+    .range-note {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
     }
 
     .button-row,
@@ -442,6 +519,7 @@
           "force"
           "phase"
           "balance"
+          "damping"
           "stability";
         width: min(100% - 20px, 760px);
         margin-top: 10px;
@@ -560,15 +638,24 @@
             <label for="lambdaSlider"><span class="help-term" tabindex="0" data-tooltip="Controls lambda = Omega / sqrt(g / R). Increasing it strengthens the spin term relative to gravity.">Spin speed</span></label>
             <output id="lambdaOut" for="lambdaSlider">0.70</output>
           </div>
-          <input id="lambdaSlider" type="range" min="0" max="4" step="0.01" value="0.70">
+          <div class="range-with-marker">
+            <input id="lambdaSlider" type="range" min="0" max="4" step="0.01" value="0.70">
+            <span id="criticalSpinLowMarker" class="range-marker secondary" aria-hidden="true"></span>
+            <span id="criticalSpinHighMarker" class="range-marker secondary muted" aria-hidden="true"></span>
+          </div>
+          <div id="criticalSpinNote" class="range-note">critical spin boundary</div>
         </div>
 
         <div class="control">
           <div class="control-row">
-            <label for="dampingSlider"><span class="help-term" tabindex="0" data-tooltip="Removes energy from the bead motion so it settles into a stable well instead of oscillating forever.">Damping</span></label>
+            <label for="dampingSlider"><span class="help-term" tabindex="0" data-tooltip="Gamma in theta-double-dot = F(theta) - gamma * theta-dot. It removes energy so the bead settles into a stable well.">Damping</span></label>
             <output id="dampingOut" for="dampingSlider">0.78</output>
           </div>
-          <input id="dampingSlider" type="range" min="0" max="2.5" step="0.01" value="0.78">
+          <div class="range-with-marker">
+            <input id="dampingSlider" type="range" min="0" max="2.5" step="0.01" value="0.78">
+            <span id="criticalDampingMarker" class="range-marker" aria-hidden="true"></span>
+          </div>
+          <div id="criticalDampingNote" class="range-note">critical gamma for current spin</div>
         </div>
 
         <div class="control">
@@ -607,7 +694,7 @@
         </label>
       </div>
       <div class="equation">
-        <code>theta'' = sin(theta) * (lambda^2 * cos(theta) - 1) - damping * theta'</code>
+        <code>theta'' = sin(theta) * (lambda^2 * cos(theta) - 1) - gamma * theta'</code>
         <code>nonzero equilibrium: cos(theta*) = 1 / lambda^2</code>
       </div>
     </aside>
@@ -635,7 +722,7 @@
     <section class="panel force-panel">
       <div class="panel-head">
         <h2>Net Tangential Force</h2>
-        <div class="meta">F(theta) = sin(theta) * (lambda^2 cos(theta) - 1)</div>
+        <div class="meta">theta-double-dot = F(theta) - gamma * theta-dot</div>
       </div>
       <div class="graph-wrap">
         <canvas id="forceCanvas" aria-label="Net tangential force graph"></canvas>
@@ -645,7 +732,7 @@
     <section class="panel phase-panel">
       <div class="panel-head">
         <h2>Phase Plane And Nullclines</h2>
-        <div class="meta">theta-dot = 0 and theta-double-dot = 0</div>
+        <div class="meta">thin lines compare gamma = 0, 0.5, 1.0</div>
       </div>
       <div class="graph-wrap">
         <canvas id="phaseCanvas" aria-label="Phase plane with nullclines"></canvas>
@@ -662,6 +749,16 @@
       </div>
     </section>
 
+
+    <section class="panel damping-panel">
+      <div class="panel-head">
+        <h2>Damping Regime Boundary</h2>
+        <div class="meta">gamma_c = 2 * sqrt(local curvature)</div>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="dampingRegimeCanvas" aria-label="Critical damping boundary graph"></canvas>
+      </div>
+    </section>
     <section class="panel stability-panel">
       <div class="panel-head">
         <h2>Local Stability Measurements</h2>
@@ -684,7 +781,12 @@
           <small>higher means a stiffer well</small>
         </div>
         <div class="stability-card">
-          <span class="label"><span class="help-term" tabindex="0" data-tooltip="The current undamped tangential force term in the theta equation. Its sign shows which way the bead is pushed along the hoop.">current force</span></span>
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="Critical damping is gamma_c = 2 * sqrt(curvature). Above it, the local motion is overdamped and first-order-like.">critical damping</span></span>
+          <strong id="criticalDampingReadout">1.43</strong>
+          <small id="regimeReadout">oscillatory second-order</small>
+        </div>
+        <div class="stability-card">
+          <span class="label"><span class="help-term" tabindex="0" data-tooltip="The current net tangential acceleration term after damping. Its sign shows which way the bead is pushed along the hoop.">current force</span></span>
           <strong id="forceReadout">0.000</strong>
           <small>positive pushes toward +theta</small>
         </div>
@@ -703,12 +805,64 @@
   </main>
 
   <script>
+
+    const tooltipLayer = document.createElement('div');
+    tooltipLayer.className = 'floating-tooltip';
+    tooltipLayer.setAttribute('role', 'tooltip');
+    document.body.appendChild(tooltipLayer);
+    let tooltipTimer = 0;
+
+    function positionTooltip(target) {
+      const rect = target.getBoundingClientRect();
+      const tooltipRect = tooltipLayer.getBoundingClientRect();
+      const margin = 12;
+      let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+      let top = rect.bottom + 12;
+
+      left = clamp(left, margin, window.innerWidth - tooltipRect.width - margin);
+      if (top + tooltipRect.height + margin > window.innerHeight) {
+        top = rect.top - tooltipRect.height - 12;
+      }
+      top = clamp(top, margin, window.innerHeight - tooltipRect.height - margin);
+
+      tooltipLayer.style.left = `${left}px`;
+      tooltipLayer.style.top = `${top}px`;
+    }
+
+    function showTooltip(target) {
+      const text = target.getAttribute('data-tooltip');
+      if (!text) {
+        return;
+      }
+      window.clearTimeout(tooltipTimer);
+      tooltipTimer = window.setTimeout(() => {
+        tooltipLayer.textContent = text;
+        positionTooltip(target);
+        tooltipLayer.classList.add('visible');
+      }, 520);
+    }
+
+    function hideTooltip() {
+      window.clearTimeout(tooltipTimer);
+      tooltipLayer.classList.remove('visible');
+    }
+
+    function attachTooltips() {
+      document.querySelectorAll('.help-term[data-tooltip]').forEach((term) => {
+        term.addEventListener('mouseenter', () => showTooltip(term));
+        term.addEventListener('mouseleave', hideTooltip);
+        term.addEventListener('focus', () => showTooltip(term));
+        term.addEventListener('blur', hideTooltip);
+      });
+    }
+
     const sceneCanvas = document.getElementById('sceneCanvas');
     const branchCanvas = document.getElementById('branchCanvas');
     const potentialCanvas = document.getElementById('potentialCanvas');
     const forceCanvas = document.getElementById('forceCanvas');
     const phaseCanvas = document.getElementById('phaseCanvas');
     const balanceCanvas = document.getElementById('balanceCanvas');
+    const dampingRegimeCanvas = document.getElementById('dampingRegimeCanvas');
 
     const lambdaSlider = document.getElementById('lambdaSlider');
     const dampingSlider = document.getElementById('dampingSlider');
@@ -716,6 +870,11 @@
     const lambdaOut = document.getElementById('lambdaOut');
     const dampingOut = document.getElementById('dampingOut');
     const sweepOut = document.getElementById('sweepOut');
+    const criticalSpinLowMarker = document.getElementById('criticalSpinLowMarker');
+    const criticalSpinHighMarker = document.getElementById('criticalSpinHighMarker');
+    const criticalSpinNote = document.getElementById('criticalSpinNote');
+    const criticalDampingMarker = document.getElementById('criticalDampingMarker');
+    const criticalDampingNote = document.getElementById('criticalDampingNote');
 
     const sweepButton = document.getElementById('sweepButton');
     const settleButton = document.getElementById('settleButton');
@@ -740,6 +899,8 @@
     const eigenReadout = document.getElementById('eigenReadout');
     const eigenNote = document.getElementById('eigenNote');
     const curvatureReadout = document.getElementById('curvatureReadout');
+    const criticalDampingReadout = document.getElementById('criticalDampingReadout');
+    const regimeReadout = document.getElementById('regimeReadout');
     const forceReadout = document.getElementById('forceReadout');
     const energyReadout = document.getElementById('energyReadout');
     const barrierReadout = document.getElementById('barrierReadout');
@@ -757,6 +918,9 @@
       blue: '#2f6fbd',
       panel: '#ffffff'
     };
+
+    const gammaReferences = [0, 0.5, 1.0];
+    const gammaReferenceDashes = [[2, 5], [7, 5], [1, 4]];
 
     const state = {
       lambda: Number(lambdaSlider.value),
@@ -868,6 +1032,57 @@
       return 'stable node';
     }
 
+
+    function stableCurvatureForLambda(lambda) {
+      if (lambda < 1) {
+        return 1 - lambda * lambda;
+      }
+      if (lambda > 1) {
+        return lambda * lambda - 1 / (lambda * lambda);
+      }
+      return 0;
+    }
+
+    function criticalDampingForLambda(lambda) {
+      const curvature = stableCurvatureForLambda(lambda);
+      return curvature > 0 ? 2 * Math.sqrt(curvature) : 0;
+    }
+
+    function criticalSpinBoundariesForGamma(gamma) {
+      const boundaries = [];
+      const halfSquared = gamma * gamma / 4;
+      if (gamma < 2) {
+        boundaries.push(Math.sqrt(Math.max(0, 1 - halfSquared)));
+      }
+      const sideSquared = (halfSquared + Math.sqrt(halfSquared * halfSquared + 4)) / 2;
+      boundaries.push(Math.sqrt(sideSquared));
+      return boundaries;
+    }
+
+    function setRangeMarker(marker, value, min, max) {
+      if (!marker || !Number.isFinite(value) || value < min || value > max) {
+        if (marker) {
+          marker.style.display = 'none';
+        }
+        return false;
+      }
+      const percent = (value - min) / (max - min) * 100;
+      marker.style.left = `${percent}%`;
+      marker.style.display = 'block';
+      return true;
+    }
+
+    function localRegime(curvature, gamma) {
+      if (curvature <= 0.0008) {
+        return 'near critical / no restoring curvature';
+      }
+      const gammaCritical = 2 * Math.sqrt(curvature);
+      if (Math.abs(gamma - gammaCritical) < 0.035) {
+        return 'critical damping boundary';
+      }
+      return gamma > gammaCritical ? 'overdamped first-order-like' : 'oscillatory second-order';
+    }
+
     function deg(rad) {
       return rad * 180 / Math.PI;
     }
@@ -936,9 +1151,7 @@
       ctx.textBaseline = options.baseline || 'middle';
       ctx.fillText(text, x, y);
       ctx.restore();
-    }
-
-    function drawDot(ctx, x, y, radius, fill, stroke, lineWidth = 2) {
+    }    function drawDot(ctx, x, y, radius, fill, stroke, lineWidth = 2) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -1304,13 +1517,23 @@
       const top = margins.top;
       const bottom = height - margins.bottom;
       const samples = [];
+      const referenceCurves = gammaReferences.map((gamma) => ({ gamma, points: [] }));
+      const currentCurve = [];
       let maxAbs = 0;
 
       for (let i = 0; i <= 360; i += 1) {
         const theta = map(i, 0, 360, -Math.PI, Math.PI);
         const force = tangentialForce(theta, state.lambda);
+        const currentNet = force - state.damping * state.thetaDot;
         samples.push({ theta, force });
-        maxAbs = Math.max(maxAbs, Math.abs(force));
+        currentCurve.push({ theta, force: currentNet });
+        maxAbs = Math.max(maxAbs, Math.abs(force), Math.abs(currentNet));
+
+        for (const curve of referenceCurves) {
+          const referenceForce = force - curve.gamma * state.thetaDot;
+          curve.points.push({ theta, force: referenceForce });
+          maxAbs = Math.max(maxAbs, Math.abs(referenceForce));
+        }
       }
 
       const yMax = Math.max(0.8, maxAbs * 1.15);
@@ -1347,10 +1570,27 @@
 
       drawLine(ctx, [{ x: left, y: yFor(0) }, { x: right, y: yFor(0) }], 'rgba(64, 83, 92, 0.45)', 1.4);
       drawText(ctx, 'theta in hoop plane', (left + right) / 2, height - 15, { align: 'center', fill: colors.axis });
-      drawText(ctx, 'F(theta)', 18, (top + bottom) / 2, { align: 'center', fill: colors.axis });
+      drawText(ctx, "theta''", 18, (top + bottom) / 2, { align: 'center', fill: colors.axis });
 
-      const curve = samples.map((sample) => ({ x: xFor(sample.theta), y: yFor(sample.force) }));
-      drawLine(ctx, curve, colors.blue, 3);
+      referenceCurves.forEach((curve, index) => {
+        const points = curve.points.map((sample) => ({ x: xFor(sample.theta), y: yFor(sample.force) }));
+        drawLine(ctx, points, 'rgba(64, 83, 92, 0.24)', 1.15, gammaReferenceDashes[index]);
+      });
+
+      const currentPoints = currentCurve.map((sample) => ({ x: xFor(sample.theta), y: yFor(sample.force) }));
+      drawLine(ctx, currentPoints, colors.blue, 3);
+
+      const legendX = Math.max(left + 12, right - 145);
+      let legendY = top + 14;
+      drawText(ctx, 'thin gamma refs', legendX, legendY, { fill: colors.axis, font: '700 11px Inter, system-ui, sans-serif' });
+      legendY += 16;
+      gammaReferences.forEach((gamma, index) => {
+        drawLine(ctx, [{ x: legendX, y: legendY }, { x: legendX + 28, y: legendY }], 'rgba(64, 83, 92, 0.34)', 1.15, gammaReferenceDashes[index]);
+        drawText(ctx, `gamma = ${gamma.toFixed(1)}`, legendX + 35, legendY, { fill: colors.muted, font: '11px Inter, system-ui, sans-serif' });
+        legendY += 15;
+      });
+      drawLine(ctx, [{ x: legendX, y: legendY }, { x: legendX + 28, y: legendY }], colors.blue, 2.4);
+      drawText(ctx, `current gamma = ${state.damping.toFixed(2)}`, legendX + 35, legendY, { fill: colors.blue, font: '11px Inter, system-ui, sans-serif' });
 
       for (const theta of equilibriumAngles(state.lambda)) {
         const slope = forceSlope(theta, state.lambda);
@@ -1358,12 +1598,11 @@
         drawDot(ctx, xFor(theta), yFor(0), 5.4, color, '#ffffff', 1.8);
       }
 
-      drawDot(ctx, xFor(state.theta), yFor(tangentialForce(state.theta, state.lambda)), 6.5, colors.orange, '#ffffff', 2);
-      drawText(ctx, 'zeros are equilibria', xFor(-2.7), yFor(0) - 16, { fill: colors.axis });
-      drawText(ctx, 'positive pushes +theta', xFor(0.55), yFor(yMax * 0.72), { fill: colors.blue });
-      drawText(ctx, 'negative pushes -theta', xFor(0.55), yFor(-yMax * 0.72), { fill: colors.blue });
+      const currentNetForce = tangentialForce(state.theta, state.lambda) - state.damping * state.thetaDot;
+      drawDot(ctx, xFor(state.theta), yFor(currentNetForce), 6.5, colors.orange, '#ffffff', 2);
+      drawText(ctx, 'zeros at theta-dot = 0 are equilibria', xFor(-2.95), yFor(0) - 16, { fill: colors.axis });
+      drawText(ctx, 'lines shift as velocity changes', xFor(0.45), yFor(-yMax * 0.72), { fill: colors.blue });
     }
-
     function drawSmallArrow(ctx, x, y, dx, dy, color) {
       const length = Math.hypot(dx, dy);
       if (length < 0.001) {
@@ -1449,6 +1688,33 @@
 
       drawLine(ctx, [{ x: left, y: yFor(0) }, { x: right, y: yFor(0) }], colors.green, 2.4);
       drawText(ctx, 'theta-dot = 0', xFor(-2.92), yFor(0) - 13, { fill: colors.green });
+
+      gammaReferences.forEach((gamma, index) => {
+        if (gamma === 0) {
+          for (const theta of equilibriumAngles(state.lambda)) {
+            drawLine(ctx, [{ x: xFor(theta), y: top }, { x: xFor(theta), y: bottom }], 'rgba(64, 83, 92, 0.22)', 1.1, gammaReferenceDashes[index]);
+          }
+          return;
+        }
+
+        const referenceNullcline = [];
+        for (let i = 0; i <= 300; i += 1) {
+          const theta = map(i, 0, 300, -Math.PI, Math.PI);
+          const velocity = clamp(tangentialForce(theta, state.lambda) / gamma, -yMax, yMax);
+          referenceNullcline.push({ x: xFor(theta), y: yFor(velocity) });
+        }
+        drawLine(ctx, referenceNullcline, 'rgba(64, 83, 92, 0.22)', 1.1, gammaReferenceDashes[index]);
+      });
+
+      const phaseLegendX = Math.max(left + 12, right - 142);
+      let phaseLegendY = top + 14;
+      drawText(ctx, 'thin gamma refs', phaseLegendX, phaseLegendY, { fill: colors.axis, font: '700 11px Inter, system-ui, sans-serif' });
+      phaseLegendY += 16;
+      gammaReferences.forEach((gamma, index) => {
+        drawLine(ctx, [{ x: phaseLegendX, y: phaseLegendY }, { x: phaseLegendX + 28, y: phaseLegendY }], 'rgba(64, 83, 92, 0.34)', 1.1, gammaReferenceDashes[index]);
+        drawText(ctx, `gamma = ${gamma.toFixed(1)}`, phaseLegendX + 35, phaseLegendY, { fill: colors.muted, font: '11px Inter, system-ui, sans-serif' });
+        phaseLegendY += 15;
+      });
 
       if (state.damping > 0.035) {
         const accelNullcline = [];
@@ -1560,6 +1826,92 @@
       drawText(ctx, 'lambda^2', barLeft + barWidth + barGap + barWidth / 2, barBase + 14, { align: 'center', fill: colors.orange });
     }
 
+    function drawDampingRegime() {
+      const { ctx, width, height } = fitCanvas(dampingRegimeCanvas);
+      clear(ctx, width, height);
+      const margins = { left: 54, right: 18, top: 22, bottom: 44 };
+      const left = margins.left;
+      const right = width - margins.right;
+      const top = margins.top;
+      const bottom = height - margins.bottom;
+      const gammaMax = Number(dampingSlider.max) || 2.5;
+      const xFor = (lambda) => map(lambda, 0, 4, left, right);
+      const yFor = (gamma) => map(gamma, 0, gammaMax, bottom, top);
+
+      ctx.save();
+      ctx.strokeStyle = colors.grid;
+      ctx.lineWidth = 1;
+      for (const lambda of [0, 1, 2, 3, 4]) {
+        const x = xFor(lambda);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        drawText(ctx, `${lambda}`, x, bottom + 17, { align: 'center', fill: colors.muted });
+      }
+      for (const gamma of [0, 0.5, 1, 1.5, 2, 2.5]) {
+        const y = yFor(gamma);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+        drawText(ctx, gamma.toFixed(gamma % 1 === 0 ? 0 : 1), left - 12, y, { align: 'right', fill: colors.muted });
+      }
+      ctx.strokeStyle = colors.axis;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+      ctx.restore();
+
+      for (const gamma of gammaReferences) {
+        const y = yFor(gamma);
+        drawLine(ctx, [{ x: left, y }, { x: right, y }], 'rgba(64, 83, 92, 0.22)', 1.05, [4, 6]);
+      }
+
+      const bottomBranch = [];
+      for (let i = 0; i <= 140; i += 1) {
+        const lambda = i / 140;
+        bottomBranch.push({ x: xFor(lambda), y: yFor(criticalDampingForLambda(lambda)) });
+      }
+      drawLine(ctx, bottomBranch, colors.orange, 2.8);
+
+      let sideSegment = [];
+      for (let i = 0; i <= 260; i += 1) {
+        const lambda = 1 + i / 260 * 3;
+        const gammaCritical = criticalDampingForLambda(lambda);
+        if (gammaCritical <= gammaMax) {
+          sideSegment.push({ x: xFor(lambda), y: yFor(gammaCritical) });
+        } else if (sideSegment.length > 1) {
+          drawLine(ctx, sideSegment, colors.orange, 2.8);
+          sideSegment = [];
+        }
+      }
+      if (sideSegment.length > 1) {
+        drawLine(ctx, sideSegment, colors.orange, 2.8);
+      }
+
+      const currentGamma = state.damping;
+      const currentLambda = state.lambda;
+      const currentCritical = criticalDampingForLambda(currentLambda);
+      drawLine(ctx, [{ x: xFor(currentLambda), y: top }, { x: xFor(currentLambda), y: bottom }], 'rgba(47, 111, 189, 0.32)', 1.3);
+      drawLine(ctx, [{ x: left, y: yFor(clamp(currentGamma, 0, gammaMax)) }, { x: right, y: yFor(clamp(currentGamma, 0, gammaMax)) }], 'rgba(47, 111, 189, 0.32)', 1.3);
+      drawDot(ctx, xFor(currentLambda), yFor(clamp(currentGamma, 0, gammaMax)), 6.8, colors.orange, '#ffffff', 2);
+
+      const boundaryY = yFor(clamp(currentCritical, 0, gammaMax));
+      drawDot(ctx, xFor(currentLambda), boundaryY, 5.2, colors.blue, '#ffffff', 1.7);
+      drawText(ctx, 'gamma_c(lambda)', xFor(1.22), yFor(0.62), { fill: colors.orange, font: '700 12px Inter, system-ui, sans-serif' });
+      drawText(ctx, 'overdamped / first-order-like', xFor(1.66), top + 18, { fill: colors.green, font: '700 12px Inter, system-ui, sans-serif' });
+      drawText(ctx, 'oscillatory / second-order', xFor(1.62), bottom - 22, { fill: colors.blue, font: '700 12px Inter, system-ui, sans-serif' });
+      if (currentCritical > gammaMax) {
+        drawText(ctx, `gamma_c = ${formatScalar(currentCritical, 2)} above slider`, xFor(2.0), top + 38, { fill: colors.orange });
+      }
+
+      drawText(ctx, 'lambda', (left + right) / 2, height - 15, { align: 'center', fill: colors.axis });
+      drawText(ctx, 'gamma', 18, (top + bottom) / 2, { align: 'center', fill: colors.axis });
+    }
     function updateDynamics(dtSeconds) {
       if (state.sweep) {
         state.lambda += state.sweepDirection * state.sweepRate * dtSeconds;
@@ -1633,7 +1985,7 @@
       sceneMeta.textContent = `${viewPrefix}; ${dynamicsText}`;
       const selectedTheta = selectedEquilibrium();
       const selectedLinear = localLinearization(selectedTheta, state.lambda, state.damping);
-      const currentForce = tangentialForce(state.theta, state.lambda);
+      const currentForce = tangentialForce(state.theta, state.lambda) - state.damping * state.thetaDot;
       const currentEnergy = 0.5 * state.thetaDot * state.thetaDot + potential(state.theta, state.lambda);
       const barrier = state.lambda > 1 ? potential(0, state.lambda) - potential(selectedTheta, state.lambda) : NaN;
 
@@ -1645,6 +1997,32 @@
       forceReadout.textContent = formatScalar(currentForce, 3);
       energyReadout.textContent = formatScalar(currentEnergy, 3);
       barrierReadout.textContent = Number.isFinite(barrier) ? formatScalar(barrier, 3) : 'n/a';
+
+      const criticalGamma = criticalDampingForLambda(state.lambda);
+      const dampingMax = Number(dampingSlider.max) || 2.5;
+      const spinMax = Number(lambdaSlider.max) || 4;
+      criticalDampingReadout.textContent = formatScalar(criticalGamma, 3);
+      regimeReadout.textContent = localRegime(selectedLinear.curvature, state.damping);
+      const dampingMarkerVisible = setRangeMarker(criticalDampingMarker, criticalGamma, 0, dampingMax);
+      criticalDampingNote.textContent = dampingMarkerVisible
+        ? `gamma_c = ${formatScalar(criticalGamma, 2)} at current lambda`
+        : `gamma_c = ${formatScalar(criticalGamma, 2)} is above slider range`;
+
+      const spinBoundaries = criticalSpinBoundariesForGamma(state.damping);
+      const lowBoundary = spinBoundaries.length > 1 ? spinBoundaries[0] : NaN;
+      const highBoundary = spinBoundaries[spinBoundaries.length - 1];
+      const lowVisible = setRangeMarker(criticalSpinLowMarker, lowBoundary, 0, spinMax);
+      const highVisible = setRangeMarker(criticalSpinHighMarker, highBoundary, 0, spinMax);
+      const spinPieces = [];
+      if (lowVisible) {
+        spinPieces.push(`lambda = ${formatScalar(lowBoundary, 2)}`);
+      }
+      if (highVisible && Math.abs(highBoundary - lowBoundary) > 0.025) {
+        spinPieces.push(`lambda = ${formatScalar(highBoundary, 2)}`);
+      }
+      criticalSpinNote.textContent = spinPieces.length > 0
+        ? `critical spin boundary: ${spinPieces.join(', ')}`
+        : 'critical spin boundary is outside slider range';
 
       positiveBranch.setAttribute('aria-pressed', String(state.branchSign > 0));
       negativeBranch.setAttribute('aria-pressed', String(state.branchSign < 0));
@@ -1665,6 +2043,7 @@
       drawForce();
       drawPhasePlane();
       drawBalance();
+      drawDampingRegime();
     }
 
     function animate(now) {
@@ -1737,8 +2116,13 @@
       state.showMirror = mirrorToggle.checked;
     });
 
-    window.addEventListener('resize', drawAll);
+    window.addEventListener('resize', () => {
+      hideTooltip();
+      drawAll();
+    });
+    window.addEventListener('scroll', hideTooltip, true);
 
+    attachTooltips();
     updateReadouts();
     drawAll();
     requestAnimationFrame(animate);
