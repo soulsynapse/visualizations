@@ -6,7 +6,7 @@ This repository is intended to be simple to publish with GitHub Pages: every vis
 
 ## Visualizations
 
-- [Bead on a rotating hoop](simulations/rotating-hoop-bead.html)
+- [Bead on a rotating hoop](https://soulsynapse.github.io/visualizations/simulations/rotating-hoop-bead.html)
 
 ## Goals
 
