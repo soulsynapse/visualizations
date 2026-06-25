@@ -22,6 +22,10 @@ This repository is intended to be simple to publish with GitHub Pages: every vis
 
 Place new visualizations in `simulations/` unless another top-level category becomes useful later.
 
+## Visualizations
+
+- [Bead on a rotating hoop](simulations/rotating-hoop-bead.html)
+
 ## Adding A Visualization
 
 Create a new `.html` file:
